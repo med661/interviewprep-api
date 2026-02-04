@@ -5,18 +5,20 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
-import { Bookmark, Clock, ArrowRight, BookOpen, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bookmark, Clock, ArrowRight, BookOpen, ChevronLeft, ChevronDown, ChevronUp, Settings, Trash2, AlertTriangle } from 'lucide-react';
 import RichTextReader from '@/components/RichTextReader';
 import Loader from '@/components/Loader';
 import { TechLogo } from '@/components/TechLogo';
 
 export default function UserDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'bookmarks' | 'settings'>('bookmarks');
   const [selectedCategory, setSelectedCategory] = useState<{ slug: string; name: string } | null>(null);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleExpand = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -28,6 +30,21 @@ export default function UserDashboard() {
       newExpanded.add(id);
     }
     setExpandedQuestions(newExpanded);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.delete('/users/me');
+      logout();
+      router.push('/');
+    } catch (err) {
+      alert('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -77,7 +94,40 @@ export default function UserDashboard() {
     );
   }
 
+  const renderSettings = () => (
+    <div className="max-w-2xl mx-auto py-10">
+      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400">
+            <AlertTriangle size={24} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">
+              Delete Account
+            </h3>
+            <p className="text-red-600/80 dark:text-red-400/80 mb-6 text-sm leading-relaxed">
+              Once you delete your account, there is no going back. Please be certain.
+              All your saved questions, progress, and personal data will be permanently removed.
+            </p>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={16} />
+              {isDeleting ? 'Deleting...' : 'Delete My Account'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
+    if (activeTab === 'settings') {
+      return renderSettings();
+    }
+
     if (loading) {
       return (
         <div className="flex justify-center py-20">
@@ -245,12 +295,28 @@ export default function UserDashboard() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
           <div className="border-b border-slate-200 dark:border-slate-800">
             <div className="flex gap-8 px-8">
-              <div
-                className="py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600 flex items-center gap-2"
+              <button
+                onClick={() => setActiveTab('bookmarks')}
+                className={`py-4 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+                  activeTab === 'bookmarks'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
               >
                 <Bookmark size={18} />
                 Saved Questions
-              </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`py-4 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+                  activeTab === 'settings'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                <Settings size={18} />
+                Settings
+              </button>
             </div>
           </div>
 
