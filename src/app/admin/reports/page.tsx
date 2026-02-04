@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { Check, X, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Check, X, AlertTriangle, ExternalLink, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import Loader from '@/components/Loader';
 
@@ -12,6 +12,7 @@ export default function AdminReportsPage() {
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, last_page: 1 });
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -43,12 +44,25 @@ export default function AdminReportsPage() {
     fetchReports();
   }, [page, status]);
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, newStatus: string) => {
+    setUpdatingId(id);
     try {
-      await api.patch(`/reports/${id}`, { status });
+      await api.patch(`/reports/${id}`, { status: newStatus });
       fetchReports(); // Refresh list
     } catch (err) {
       alert('Failed to update status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const deleteReport = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this report?')) return;
+    try {
+      await api.delete(`/reports/${id}`);
+      fetchReports(); // Refresh list
+    } catch (err) {
+      alert('Failed to delete report');
     }
   };
 
@@ -91,8 +105,11 @@ export default function AdminReportsPage() {
             {reports.map((report) => (
               <tr key={report.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-bold rounded-full uppercase ${
+                  <select
+                    value={report.status}
+                    onChange={(e) => updateStatus(report.id, e.target.value)}
+                    disabled={updatingId === report.id}
+                    className={`px-2 py-1 text-xs font-bold rounded-full uppercase cursor-pointer border-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 ${
                       report.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-800'
                         : report.status === 'resolved'
@@ -100,8 +117,10 @@ export default function AdminReportsPage() {
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    {report.status}
-                  </span>
+                    <option value="pending">Pending</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="ignored">Ignored</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
@@ -129,20 +148,29 @@ export default function AdminReportsPage() {
                     <>
                       <button
                         onClick={() => updateStatus(report.id, 'resolved')}
-                        className="text-green-600 hover:text-green-900 bg-green-50 p-1.5 rounded"
+                        className="text-green-600 hover:text-green-900 bg-green-50 p-1.5 rounded disabled:opacity-50"
                         title="Mark as Resolved"
+                        disabled={updatingId === report.id}
                       >
                         <Check size={16} />
                       </button>
                       <button
                         onClick={() => updateStatus(report.id, 'ignored')}
-                        className="text-gray-400 hover:text-gray-600 bg-gray-50 p-1.5 rounded"
+                        className="text-gray-400 hover:text-gray-600 bg-gray-50 p-1.5 rounded disabled:opacity-50"
                         title="Ignore"
+                        disabled={updatingId === report.id}
                       >
                         <X size={16} />
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => deleteReport(report.id)}
+                    className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 rounded"
+                    title="Delete Report"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </td>
               </tr>
             ))}
