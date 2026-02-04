@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import api from '@/lib/api';
-import { Plus, Pencil, Trash2, Link as LinkIcon, Github, Twitter, Linkedin, Globe, Search, ArrowUpDown, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Link as LinkIcon, Github, Twitter, Linkedin, Globe, Search, ArrowUpDown, Upload, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import Image from 'next/image';
 
 interface Contributor {
@@ -102,6 +102,30 @@ export default function ContributorsPage() {
       fetchContributors();
     } catch (error) {
       console.error('Failed to delete contributor');
+    }
+  };
+
+  const handleGenerateCertificate = async (contributor: Contributor) => {
+    try {
+      const response = await api.get('/certificates/generate', {
+        params: { 
+            name: contributor.name, 
+            role: contributor.role 
+        },
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${contributor.name.replace(/\s+/g, '_')}_Certificate.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to generate certificate', error);
+      alert('Failed to generate certificate. Please try again.');
     }
   };
 
@@ -228,6 +252,13 @@ export default function ContributorsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleGenerateCertificate(contributor)} 
+                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                      title="Generate Certificate"
+                    >
+                      <FileText size={16} />
+                    </button>
                     <button onClick={() => handleEdit(contributor)} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
                       <Pencil size={16} />
                     </button>
